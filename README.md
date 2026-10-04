@@ -1,5 +1,5 @@
 # AuthTrack - User Authentication and Access Control System
-
+![CI](https://github.com/HoneyyNagpal/AuthTrack/actions/workflows/ci.yml/badge.svg)
 A Spring Boot REST API for user authentication and role based authorization using JWT and Spring Security.
 
 ## Tech Stack
@@ -145,6 +145,12 @@ Valid roles: `user`, `moderator`, `admin`.
 ```
 mvn test
 ```
+
+The suite has two layers. Unit tests use JUnit 5 and Mockito for the service layer. Integration tests start the full application on an in-memory H2 database and verify the security rules end to end: role escalation attempts, 401 and 403 responses, admin role management, and rejection of tokens belonging to disabled accounts. No MySQL or environment variables are needed to run tests.
+
+Coverage is measured with JaCoCo. After `mvn test`, open `target/site/jacoco/index.html`.
+
+GitHub Actions runs the full build and tests on every push and pull request.
 
 ## Project Structure
 
