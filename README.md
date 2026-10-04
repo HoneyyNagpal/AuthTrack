@@ -52,6 +52,22 @@ mvn spring-boot:run
 
 Roles are seeded automatically on startup (ROLE_USER, ROLE_MODERATOR, ROLE_ADMIN).
 
+### Run with Docker
+
+Requires Docker Desktop. This starts the API and a MySQL 8 container together.
+
+```
+cp .env.example .env
+```
+
+Edit `.env` and set real values. Generate the JWT secret with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
+
+```
+docker compose up --build
+```
+
+The API is available at http://localhost:8080. Stop with `docker compose down`. Add `-v` to also delete the database volume.
+
 ## Security Model
 
 Public registration always creates a user with ROLE_USER. Any roles sent in the register request are ignored. Elevated roles are granted only by an admin through `PATCH /api/users/{id}/roles`. Admins cannot change their own roles.

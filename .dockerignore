@@ -1,8 +1,7 @@
 target/
+.git/
+.github/
 .idea/
 .vscode/
-*.iml
 .DS_Store
-.LCK*
-~$*
 .env
