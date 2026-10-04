@@ -1,13 +1,24 @@
 package com.authtrack.controller;
 
-import com.authtrack.dto.ApiResponse;
-import com.authtrack.dto.UserResponse;
-import com.authtrack.service.UserService;
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.authtrack.dto.ApiResponse;
+import com.authtrack.dto.RoleUpdateRequest;
+import com.authtrack.dto.UserResponse;
+import com.authtrack.service.UserService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -45,6 +56,15 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> toggleStatus(@PathVariable Long id) {
         return ResponseEntity.ok(userService.toggleUserStatus(id));
+    }
+
+    // admin only: replace a user's roles
+    @PatchMapping("/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponse> updateRoles(@PathVariable Long id,
+                                                    @Valid @RequestBody RoleUpdateRequest request,
+                                                    Authentication authentication) {
+        return ResponseEntity.ok(userService.updateUserRoles(id, request.getRoles(), authentication.getName()));
     }
 
     // admin only: permanently delete a user

@@ -1,5 +1,26 @@
 package com.authtrack;
 
+import java.util.Optional;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import com.authtrack.dto.ApiResponse;
 import com.authtrack.dto.AuthRequest;
 import com.authtrack.entity.Role;
@@ -9,21 +30,8 @@ import com.authtrack.repository.RoleRepository;
 import com.authtrack.repository.UserRepository;
 import com.authtrack.security.JwtUtils;
 import com.authtrack.service.AuthService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
-
+@ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
     @Mock private AuthenticationManager authenticationManager;
@@ -34,11 +42,6 @@ class AuthServiceTest {
 
     @InjectMocks
     private AuthService authService;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     @Test
     void register_shouldSucceed_whenUsernameAndEmailAreUnique() {
@@ -59,6 +62,26 @@ class AuthServiceTest {
         assertTrue(response.isSuccess());
         assertEquals("User registered successfully", response.getMessage());
         verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    void register_shouldIgnoreRequestedAdminRole_andAssignUserRoleOnly() {
+        AuthRequest.Register request = new AuthRequest.Register();
+        request.setUsername("sneaky");
+        request.setEmail("sneaky@example.com");
+        request.setPassword("password123");
+        request.setRoles(Set.of("admin"));
+
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
+        when(roleRepository.findByName(Role.RoleName.ROLE_USER))
+                .thenReturn(Optional.of(new Role(Role.RoleName.ROLE_USER)));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ApiResponse response = authService.register(request);
+
+        assertTrue(response.isSuccess());
+        verify(roleRepository, never()).findByName(Role.RoleName.ROLE_ADMIN);
+        verify(roleRepository, never()).findByName(Role.RoleName.ROLE_MODERATOR);
     }
 
     @Test
@@ -86,5 +109,18 @@ class AuthServiceTest {
 
         assertThrows(BadRequestException.class, () -> authService.register(request));
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void login_shouldThrow_whenCredentialsAreInvalid() {
+        AuthRequest.Login request = new AuthRequest.Login();
+        request.setUsername("johndoe");
+        request.setPassword("wrongpassword");
+
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+        assertThrows(BadCredentialsException.class, () -> authService.login(request));
+        verify(jwtUtils, never()).generateToken(any());
     }
 }
